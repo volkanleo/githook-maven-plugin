@@ -40,7 +40,7 @@ The plugin provides the only goal "install". It's mapped on "initialize" phase b
     </plugins>
 </build>
 ```
-Configure Hooks: Define your hooks in the <hooks> and <resourceHooks> sections of the plugin configuration. Inline hooks have predefined scripts, while resource hooks link to external script files.
+Configure Hooks: Define your hooks in the plugin configuration's <hooks> and <resourceHooks> sections. Inline hooks have predefined scripts, while resource hooks link to external script files.
 ```
 <hooks>
   <hook-name/>
