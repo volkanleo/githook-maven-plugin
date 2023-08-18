@@ -37,30 +37,37 @@ public final class GitHookInstallMojo extends AbstractMojo {
      * Executes the Git hook installation process.
      *
      * @throws MojoExecutionException If an execution error occurs.
-     * @throws MojoFailureException   If the plugin encounters a failure.
+     * @throws MojoFailureException If an execution error occurs.
      */
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         if (!Files.exists(HOOK_DIR_PATH)) {
-            throw new MojoExecutionException("not a git repository");
+            throw new MojoExecutionException("Not a git repository");
         }
-        this.generateInlineHooks();
-        this.generateResourceHooks();
+        generateDefaultHooks();
+        generateResourceHooks();
     }
 
+
+
     /**
-     * Generates inline Git hooks using predefined scripts.
+     * Generates default Git hooks using predefined scripts.
      *
      * @throws MojoExecutionException If an execution error occurs.
      */
-    private void generateInlineHooks() throws MojoExecutionException {
+    private void generateDefaultHooks() throws MojoExecutionException, MojoFailureException {
         if (hooks == null) {
             return;
         }
         for (Map.Entry<String, String> hook : hooks.entrySet()) {
             String hookName = hook.getKey();
             getLog().info("Generating " + hookName + " from Maven conf");
+            if(GitHookType.isValidHookName(hookName)){
             generateHookFile(hookName, SHEBANG + '\n' + getDefaultScript());
+            }
+            else {
+                throw new MojoFailureException("'" + hookName + "' is not a valid hook file name.");
+            }
         }
     }
 
@@ -69,24 +76,30 @@ public final class GitHookInstallMojo extends AbstractMojo {
      *
      * @throws MojoExecutionException If an execution error occurs.
      */
-    private void generateResourceHooks() throws MojoExecutionException {
+    private void generateResourceHooks() throws MojoExecutionException, MojoFailureException {
         if (resourceHooks == null) {
             return;
         }
         for (Map.Entry<String, String> hook : resourceHooks.entrySet()) {
             String hookName = hook.getKey();
 
-            Path hookFilePath = Paths.get(hook.getValue());
-            Path local = Paths.get("");
+            if (GitHookType.isValidHookName(hookName)) {
 
-            if (!hookFilePath.toAbsolutePath().startsWith(local.toAbsolutePath())) {
-                throw new MojoExecutionException("only file inside the project can be used to generate git hooks");
+                Path hookFilePath = Paths.get(hook.getValue());
+                Path local = Paths.get("");
+
+                if (!hookFilePath.toAbsolutePath().startsWith(local.toAbsolutePath())) {
+                    throw new MojoExecutionException("only file inside the project can be used to generate git hooks");
+                }
+                try {
+                    getLog().info("Generating " + hookName + " from " + hookFilePath.toString());
+                    generateHookFile(hookName, Files.lines(hookFilePath).collect(Collectors.joining("\n")));
+                } catch (IOException e) {
+                    throw new MojoExecutionException("could not access hook resource : " + hookFilePath, e);
+                }
             }
-            try {
-                getLog().info("Generating " + hookName + " from " + hookFilePath.toString());
-                generateHookFile(hookName, Files.lines(hookFilePath).collect(Collectors.joining("\n")));
-            } catch (IOException e) {
-                throw new MojoExecutionException("could not access hook resource : " + hookFilePath, e);
+            else {
+                throw new MojoFailureException("'" + hookName + "' is not a valid hook file name.");
             }
         }
     }
