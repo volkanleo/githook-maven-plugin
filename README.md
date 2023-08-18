@@ -18,7 +18,7 @@ Because it deals with the problem of providing hook configuration to the reposit
 ## Usage
 The plugin provides the only goal "install". It's mapped on "initialize" phase by default. To use the default flow add these lines to the plugin definition:
 
-1- Add Plugin Configuration: In your project's pom.xml, add the plugin configuration under the build section:
+1. Add Plugin Configuration: In your project's pom.xml, add the plugin configuration under the build section:
 ```
 <build>
     <plugins>
@@ -41,6 +41,7 @@ The plugin provides the only goal "install". It's mapped on "initialize" phase b
 </build>
 ```
 Configure Hooks: Define your hooks in the plugin configuration's <hooks> and <resourceHooks> sections. Inline hooks have predefined scripts, while resource hooks link to external script files.
+#### NOTE: If you define it this way, the default version control script will be added to the specified hook.
 ```
 <hooks>
   <hook-name/>
@@ -51,27 +52,26 @@ NOTE: The plugin rewrites hooks.
 
 ## Usage Example
 ```
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>com.leovegas</groupId>
-				<artifactId>githook-maven-plugin</artifactId>
-				<version>0.0.1-SNAPSHOT</version>
-				<executions>
-					<execution>
-						<goals>
-							<goal>install</goal>
-						</goals>
-						<configuration>
-							<hooks>
-								<pre-commit/>
-							</hooks>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-		</plugins>
-	</build>
+<build>
+    <plugins>
+        <plugin>
+            <groupId>com.leovegas</groupId>
+            <artifactId>git-hook-install-maven-plugin</artifactId>
+            <version>1.0.0</version>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>install</goal>
+                    </goals>
+                </execution>
+            </executions>
+            <configuration>
+		<pre-commit/>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+
 ```
 
 
