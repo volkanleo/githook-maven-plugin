@@ -31,10 +31,10 @@ public final class GitHookInstallMojo extends AbstractMojo {
     private static final Path HOOK_DIR_PATH = Paths.get(".git/hooks");
 
     @Parameter(name = "hooks")
-    public Map<String, String> hooks;
+    private Map<String, String> hooks;
 
     @Parameter(name = "resourceHooks")
-    public Map<String, String> resourceHooks;
+    private Map<String, String> resourceHooks;
 
     /**
      * Executes the Git hook installation process.
@@ -79,7 +79,7 @@ public final class GitHookInstallMojo extends AbstractMojo {
      * @param asStringScript  The content of the hook file.
      * @throws MojoExecutionException If an error occurs during hook file generation.
      */
-    public void generateDefaultHookFile(String hookName, String asStringScript) throws MojoExecutionException {
+    private void generateDefaultHookFile(String hookName, String asStringScript) throws MojoExecutionException {
         try {
             Path path = HOOK_DIR_PATH.resolve(hookName);
             Files.write(
@@ -93,17 +93,13 @@ public final class GitHookInstallMojo extends AbstractMojo {
         }
     }
 
-    public void setHooks(Map<String, String> hooks) {
-        this.hooks = hooks;
-    }
-
     /**
      * Generates hooks from resources specified in the Maven configuration.
      *
      * @throws MojoExecutionException If an error occurs during hook generation.
      * @throws MojoFailureException   If an invalid hook file name is encountered.
      */
-     void installResourceGitHook() throws MojoFailureException {
+    private void installResourceGitHook() throws MojoFailureException {
         if (resourceHooks == null) {
             return;
         }
@@ -123,7 +119,7 @@ public final class GitHookInstallMojo extends AbstractMojo {
      * @param hookName the type of hook to install.
      * @param filePath the location of the file to install as a hook.
      */
-    public void installGitHook(final String hookName, final String filePath) {
+    private void installGitHook(final String hookName, final String filePath) {
         Path gitHookPath = HOOK_DIR_PATH.resolve(hookName);
         getLog().info("Generating " + hookName + " from " + gitHookPath.toString());
         if (Objects.nonNull(filePath) && Paths.get(filePath).toFile().isFile()) {
