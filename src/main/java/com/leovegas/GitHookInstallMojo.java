@@ -11,11 +11,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
@@ -30,10 +31,10 @@ public final class GitHookInstallMojo extends AbstractMojo {
     private static final Path HOOK_DIR_PATH = Paths.get(".git/hooks");
 
     @Parameter(name = "hooks")
-    private Map<String, String> hooks;
+    public Map<String, String> hooks;
 
     @Parameter(name = "resourceHooks")
-    private Map<String, String> resourceHooks;
+    public Map<String, String> resourceHooks;
 
     /**
      * Executes the Git hook installation process.
@@ -46,8 +47,8 @@ public final class GitHookInstallMojo extends AbstractMojo {
         if (!Files.exists(HOOK_DIR_PATH)) {
             throw new MojoExecutionException("Not a git repository");
         }
-        generateDefaultHooks();
-        generateResourceHooks();
+        installDefaultHooks();
+        installResourceGitHook();
     }
 
     /**
@@ -56,7 +57,7 @@ public final class GitHookInstallMojo extends AbstractMojo {
      * @throws MojoExecutionException If an error occurs during hook generation.
      * @throws MojoFailureException   If an invalid hook file name is encountered.
      */
-    private void generateDefaultHooks() throws MojoExecutionException, MojoFailureException {
+    private void installDefaultHooks() throws MojoExecutionException, MojoFailureException {
         if (hooks == null) {
             return;
         }
@@ -64,37 +65,7 @@ public final class GitHookInstallMojo extends AbstractMojo {
             String hookName = hook.getKey();
             getLog().info("Generating " + hookName + " from Maven conf");
             if (GitHookType.isValidHookName(hookName)) {
-                generateHookFile(hookName, SHEBANG + '\n' + getDefaultHookScript());
-            } else {
-                throw new MojoFailureException("'" + hookName + "' is not a valid hook file name.");
-            }
-        }
-    }
-
-    /**
-     * Generates hooks from resources specified in the Maven configuration.
-     *
-     * @throws MojoExecutionException If an error occurs during hook generation.
-     * @throws MojoFailureException   If an invalid hook file name is encountered.
-     */
-    private void generateResourceHooks() throws MojoExecutionException, MojoFailureException {
-        if (resourceHooks == null) {
-            return;
-        }
-        for (Map.Entry<String, String> hook : resourceHooks.entrySet()) {
-            String hookName = hook.getKey();
-            if (GitHookType.isValidHookName(hookName)) {
-                Path hookFilePath = Paths.get(hook.getValue());
-                Path local = Paths.get("");
-                if (!hookFilePath.toAbsolutePath().startsWith(local.toAbsolutePath())) {
-                    throw new MojoExecutionException("only file inside the project can be used to generate git hooks");
-                }
-                try {
-                    getLog().info("Generating " + hookName + " from " + hookFilePath.toString());
-                    generateHookFile(hookName, Files.lines(hookFilePath).collect(Collectors.joining("\n")));
-                } catch (IOException e) {
-                    throw new MojoExecutionException("could not access hook resource : " + hookFilePath, e);
-                }
+                generateDefaultHookFile(hookName, SHEBANG + '\n' + getDefaultHookScript());
             } else {
                 throw new MojoFailureException("'" + hookName + "' is not a valid hook file name.");
             }
@@ -108,7 +79,7 @@ public final class GitHookInstallMojo extends AbstractMojo {
      * @param asStringScript  The content of the hook file.
      * @throws MojoExecutionException If an error occurs during hook file generation.
      */
-    private void generateHookFile(String hookName, String asStringScript) throws MojoExecutionException {
+    public void generateDefaultHookFile(String hookName, String asStringScript) throws MojoExecutionException {
         try {
             Path path = HOOK_DIR_PATH.resolve(hookName);
             Files.write(
@@ -116,17 +87,81 @@ public final class GitHookInstallMojo extends AbstractMojo {
                     asStringScript.getBytes(),
                     CREATE, TRUNCATE_EXISTING
             );
-            Files.setPosixFilePermissions(
-                    path,
-                    new HashSet<>(Arrays.asList(
-                            PosixFilePermission.OWNER_EXECUTE,
-                            PosixFilePermission.OWNER_READ,
-                            PosixFilePermission.OWNER_WRITE
-                    ))
-            );
+            setCustomFilePermissions(path);
         } catch (IOException e) {
             throw new MojoExecutionException("could not write hook with name : " + hookName, e);
         }
+    }
+
+    public void setHooks(Map<String, String> hooks) {
+        this.hooks = hooks;
+    }
+
+    /**
+     * Generates hooks from resources specified in the Maven configuration.
+     *
+     * @throws MojoExecutionException If an error occurs during hook generation.
+     * @throws MojoFailureException   If an invalid hook file name is encountered.
+     */
+     void installResourceGitHook() throws MojoFailureException {
+        if (resourceHooks == null) {
+            return;
+        }
+        for (final Map.Entry<String, String> hook : resourceHooks.entrySet()) {
+            final String hookName = hook.getKey();
+            if (GitHookType.isValidHookName(hookName)) {
+                installGitHook(hookName, hook.getValue());
+            } else {
+                throw new MojoFailureException("'" + hookName + "' is not a valid hook file name.");
+            }
+        }
+    }
+
+    /**
+     * Take the file in the provided location and install it as a Git hook of the provided type.
+     *
+     * @param hookName the type of hook to install.
+     * @param filePath the location of the file to install as a hook.
+     */
+    public void installGitHook(final String hookName, final String filePath) {
+        Path gitHookPath = HOOK_DIR_PATH.resolve(hookName);
+        getLog().info("Generating " + hookName + " from " + gitHookPath.toString());
+        if (Objects.nonNull(filePath) && Paths.get(filePath).toFile().isFile()) {
+            copyFromFile(filePath, gitHookPath);
+        }
+    }
+
+    /**
+     * Copies the specified file from the file system into the default hooks directory.
+     *
+     * @param filePath path to the file to use as the hook.
+     * @param gitHookPath the location to move the file to.
+     */
+    private void copyFromFile(final String filePath, final Path gitHookPath) {
+        try {
+            Files.copy(Paths.get(filePath), gitHookPath, StandardCopyOption.REPLACE_EXISTING);
+
+            setCustomFilePermissions(gitHookPath);
+        } catch (final IOException e) {
+            getLog().warn("Could not move file into .git/hooks directory", e);
+        }
+    }
+
+    /**
+     * Sets custom POSIX file permissions on the specified file path.
+     *
+     * @param path The path of the file for which permissions need to be set.
+     * @throws IOException If an I/O error occurs while setting the permissions.
+     */
+    private static void setCustomFilePermissions(Path path) throws IOException {
+        Files.setPosixFilePermissions(
+                path,
+                new HashSet<>(Arrays.asList(
+                        PosixFilePermission.OWNER_EXECUTE,
+                        PosixFilePermission.OWNER_READ,
+                        PosixFilePermission.OWNER_WRITE
+                ))
+        );
     }
 
     /**
