@@ -117,6 +117,10 @@ To install hooks from resources, use the `resourceHooks` configuration:
     </resourceHooks>
 </configuration>
 ```
+`In this example, pre-commit-hook.sh is located in the src/main/resources directory.`
 
-In this example, pre-commit-hook.sh is located in the src/main/resources directory.
+
+#### Default hook usage example: 
+<img width="859" alt="image" src="https://github.com/volkanleo/githook-maven-plugin/assets/122264814/d88713ea-b798-47bc-8d49-d9b125d0a09b">
+
 
