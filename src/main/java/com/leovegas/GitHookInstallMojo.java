@@ -136,7 +136,6 @@ public final class GitHookInstallMojo extends AbstractMojo {
     private void copyFromFile(final String filePath, final Path gitHookPath) {
         try {
             Files.copy(Paths.get(filePath), gitHookPath, StandardCopyOption.REPLACE_EXISTING);
-
             setCustomFilePermissions(gitHookPath);
         } catch (final IOException e) {
             getLog().warn("Could not move file into .git/hooks directory", e);
