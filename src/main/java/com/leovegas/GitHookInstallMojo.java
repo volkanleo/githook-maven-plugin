@@ -167,7 +167,7 @@ public final class GitHookInstallMojo extends AbstractMojo {
     private String getDefaultHookScript() {
         return "# Change directory to the project's root\n" +
                 "cd \"$(git rev-parse --show-toplevel)\"\n\n" +
-                "# Check for updated dependencies and microservice versions\n" +
+                " echo \"Checking for updated dependencies and microservice versions...\"\n" +
                 "dependency_updates=$(mvn versions:display-property-updates versions:display-parent-updates -DgenerateBackupPoms=false \\\n" +
                 "    | grep '\\->' \\\n" +
                 "    | awk -F ' ' '{if ($2 != $4) print $0}')\n\n" +
